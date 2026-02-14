@@ -1,3 +1,8 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+
 import torch
 from src.utils.config import load_config
 from src.utils.tokenizer import CharTokenizer
