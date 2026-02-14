@@ -24,7 +24,8 @@ model.eval()
 context = torch.zeros((1, 1), dtype=torch.long).to(device)
 
 for _ in range(200):
-    logits = model(context)
+    context_cond = context[:, -config["block_size"]:]
+    logits = model(context_cond)
     logits = logits[:, -1, :]
     probs = torch.softmax(logits, dim=-1)
     next_token = torch.multinomial(probs, num_samples=1)
