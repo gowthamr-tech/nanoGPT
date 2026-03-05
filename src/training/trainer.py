@@ -10,15 +10,34 @@ class Trainer:
         self.device = device
         self.optimizer = torch.optim.AdamW(model.parameters(), lr=config["learning_rate"])
 
+    @torch.no_grad()
+    def estimate_val_loss(self, val_data, eval_steps=20):
+        self.model.eval()
+        losses = []
+        for _ in range(eval_steps):
+            xb, yb = get_batch(val_data, self.config["block_size"], self.config["batch_size"])
+            xb, yb = xb.to(self.device), yb.to(self.device)
+            logits = self.model(xb)
+            B, T, C = logits.shape
+            loss = F.cross_entropy(logits.view(B*T, C), yb.view(B*T))
+            losses.append(loss.item())
+        self.model.train()
+        return sum(losses) / len(losses)
+
     def train(self):
         self.model.to(self.device)
 
-        steps_per_epoch = max(1, len(self.data) // (self.config["block_size"] * self.config["batch_size"]))
+        split = int(0.9 * len(self.data))
+        train_data = self.data[:split]
+        val_data = self.data[split:]
+
+        steps_per_epoch = max(1, len(train_data) // (self.config["block_size"] * self.config["batch_size"]))
 
         for epoch in range(self.config["epochs"]):
+            self.model.train()
             for step in range(steps_per_epoch):
                 xb, yb = get_batch(
-                    self.data,
+                    train_data,
                     self.config["block_size"],
                     self.config["batch_size"]
                 )
@@ -33,7 +52,10 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
-            if epoch % 50 == 0:
-                print(f"Epoch {epoch} | Loss {loss.item()}")
+            val_loss = self.estimate_val_loss(val_data)
+            print(f"Epoch {epoch} | Val Loss {val_loss:.4f}")
+            if val_loss < 1.5:
+                print("Val loss below 1.5 — stopping early.")
+                break
 
         torch.save(self.model.state_dict(), "checkpoints/model.pt")

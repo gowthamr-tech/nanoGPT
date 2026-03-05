@@ -8,5 +8,7 @@ class MultiHeadAttention(nn.Module):
         self.attn = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout, batch_first=True)
 
     def forward(self, x):
-        out, _ = self.attn(x, x, x)
+        T = x.size(1)
+        mask = nn.Transformer.generate_square_subsequent_mask(T, device=x.device)
+        out, _ = self.attn(x, x, x, attn_mask=mask, is_causal=True)
         return out
