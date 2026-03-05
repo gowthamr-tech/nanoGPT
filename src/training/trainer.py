@@ -13,22 +13,25 @@ class Trainer:
     def train(self):
         self.model.to(self.device)
 
+        steps_per_epoch = max(1, len(self.data) // (self.config["block_size"] * self.config["batch_size"]))
+
         for epoch in range(self.config["epochs"]):
-            xb, yb = get_batch(
-                self.data,
-                self.config["block_size"],
-                self.config["batch_size"]
-            )
+            for step in range(steps_per_epoch):
+                xb, yb = get_batch(
+                    self.data,
+                    self.config["block_size"],
+                    self.config["batch_size"]
+                )
 
-            xb, yb = xb.to(self.device), yb.to(self.device)
+                xb, yb = xb.to(self.device), yb.to(self.device)
 
-            logits = self.model(xb)
-            B, T, C = logits.shape
-            loss = F.cross_entropy(logits.view(B*T, C), yb.view(B*T))
+                logits = self.model(xb)
+                B, T, C = logits.shape
+                loss = F.cross_entropy(logits.view(B*T, C), yb.view(B*T))
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
             if epoch % 50 == 0:
                 print(f"Epoch {epoch} | Loss {loss.item()}")
